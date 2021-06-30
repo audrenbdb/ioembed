@@ -1,9 +1,8 @@
-package ioembed_test
+package ioembed
 
 import (
 	"embed"
 	"errors"
-	"github.com/audrenbdb/ioembed"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -15,9 +14,9 @@ var testFile embed.FS
 func TestCopyFS_Integration(t *testing.T) {
 	//integration tests done 25/06/2021 16:26 UTC
 	t.Skip()
-	getFsBytes := ioembed.NewGetFSBytesFunc()
-	writeToFile := ioembed.NewWriteToFileFunc()
-	copyFS := ioembed.NewCopyFSFunc(getFsBytes, writeToFile)
+	getFsBytes := newGetFSBytesFunc()
+	writeToFile := newWriteToFileFunc()
+	copyFS := newCopyFSFunc(getFsBytes, writeToFile)
 
 	err := copyFS(testFile, "test.txt", "output")
 	assert.NoError(t, err)
@@ -28,8 +27,8 @@ func TestCopyFS(t *testing.T) {
 	tests := []struct{
 		description string
 
-		getFSBytes ioembed.GetFSBytes
-		writeToFile ioembed.WriteToFile
+		getFSBytes getFSBytes
+		writeToFile writeToFile
 
 		fs embed.FS
 		fileName string
@@ -58,7 +57,7 @@ func TestCopyFS(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		copyFS := ioembed.NewCopyFSFunc(test.getFSBytes, test.writeToFile)
+		copyFS := newCopyFSFunc(test.getFSBytes, test.writeToFile)
 		err := copyFS(test.fs, test.fileName, test.dirPath)
 		assert.Equal(t, test.outErr, err)
 	}
