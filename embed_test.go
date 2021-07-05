@@ -3,62 +3,47 @@ package ioembed
 import (
 	"embed"
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 //go:embed test.txt
 var testFile embed.FS
 
-
-func TestCopyFS_Integration(t *testing.T) {
-	//integration tests done 25/06/2021 16:26 UTC
-	t.Skip()
-	getFsBytes := newGetFSBytesFunc()
-	writeToFile := newWriteToFileFunc()
-	copyFS := newCopyFSFunc(getFsBytes, writeToFile)
-
-	err := copyFS(testFile, "test.txt", "output")
-	assert.NoError(t, err)
-	assert.FileExists(t, "output/test.txt")
-}
-
-func TestCopyFS(t *testing.T) {
-	tests := []struct{
-		description string
-
-		getFSBytes getFSBytes
-		writeToFile writeToFile
-
-		fs embed.FS
-		fileName string
-		dirPath string
-
-		outErr error
+func TestGetFiles(t *testing.T) {
+	by := make([]byte, 5)
+	fileNames := []string{"test.txt"}
+	tests := []struct {
+		inReader  fileReader
+		fileNames []string
+		outFiles  map[string][]byte
+		outErr    error
 	}{
 		{
-			description: "Extracting bytes from embed FS should fail",
-
-			getFSBytes: func(fs embed.FS, fileName string) ([]byte, error) {
-				return nil, errors.New("bytes from file error")
-			},
-			outErr: errors.New("bytes from file error"),
+			inReader:  &mockFs{bytes: by, err: errors.New("failed to read")},
+			fileNames: fileNames,
+			outFiles:  nil,
+			outErr:    errors.New("failed to read"),
 		},
 		{
-			description: "Copying file should fail",
-			getFSBytes: func(fs embed.FS, fileName string) ([]byte, error) {
-				return nil, nil
-			},
-			writeToFile: func(bytes []byte, dirPath string, fileName string) error {
-				return errors.New("copying file error")
-			},
-			outErr: errors.New("copying file error"),
+			inReader:  &mockFs{bytes: by, err: nil},
+			fileNames: fileNames,
+			outFiles: map[string][]byte{"test.txt":by},
 		},
 	}
-
 	for _, test := range tests {
-		copyFS := newCopyFSFunc(test.getFSBytes, test.writeToFile)
-		err := copyFS(test.fs, test.fileName, test.dirPath)
+		files, err := getFiles(test.inReader, test.fileNames...)
 		assert.Equal(t, test.outErr, err)
+		assert.Equal(t, test.outFiles, files)
 	}
+}
+
+type mockFs struct {
+	bytes []byte
+	err   error
+}
+
+func (m *mockFs) ReadFile(fileName string) ([]byte, error) {
+	return m.bytes, m.err
 }
