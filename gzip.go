@@ -6,15 +6,14 @@ import (
 	"compress/gzip"
 	"embed"
 	"io"
+	"io/fs"
 )
 
-func GetGZippedTarFiles(fs embed.FS, name string) (map[string][]byte, error) {
-	f, err := fs.Open(name)
+func GetGZippedTarFiles(fs embed.FS) (map[string][]byte, error) {
+	f, err := getFirstFileFromEmbedFS(fs)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-
 	r, err := newGzipTarReader(f)
 	if err != nil {
 		return nil, err
@@ -22,6 +21,22 @@ func GetGZippedTarFiles(fs embed.FS, name string) (map[string][]byte, error) {
 	files := map[string][]byte{}
 	err = getEachTarFile(files, r)
 	return files, err
+}
+
+func getFirstFileFromEmbedFS(e embed.FS) (io.Reader, error) {
+	var r io.Reader
+	err := fs.WalkDir(e, ".", func(path string, d fs.DirEntry, err error) error {
+		if d.Type() == fs.ModeDir || r != nil{
+			return nil
+		}
+		b, err := e.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		r = bytes.NewBuffer(b)
+		return nil
+	})
+	return r, err
 }
 
 func newGzipTarReader(f io.Reader) (*tar.Reader, error) {
